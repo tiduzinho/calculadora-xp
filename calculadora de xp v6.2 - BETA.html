@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de XP v6.1 (DB Atualizado)</title>
+    <style>
+        body { font-family: sans-serif; background-color: #2c2c2c; color: #f0f0f0; max-width: 700px; margin: 20px auto; padding: 20px; border-radius: 8px; }
+        h1, h2 { text-align: center; color: #ffc107; }
+        .input-group, .quest-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; background-color: #3c3c3c; color: #f0f0f0; border: 1px solid #555; border-radius: 4px; }
+        .bonus-group { background-color: #3c3c3c; padding: 10px 15px; border-radius: 4px; display: flex; align-items: center; margin-bottom: 20px; }
+        .bonus-group label { margin: 0; margin-left: 10px; cursor: pointer; }
+        .quest-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .quest-item input[type="checkbox"] { display: none; }
+        .quest-item label { display: flex; align-items: center; background-color: #3c3c3c; padding: 10px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease-in-out; border: 2px solid #3c3c3c; }
+        .quest-item label:hover { background-color: #4c4c4c; border-color: #555; }
+        .quest-level-badge { background-color: #555; color: #ffc107; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-right: 10px; font-size: 14px; }
+        .quest-name { font-size: 14px; color: #f0f0f0; }
+        .quest-item input[type="checkbox"]:checked + label { border-color: #ffc107; background-color: #444; }
+        .quest-item input[type="checkbox"]:checked + label .quest-level-badge { background-color: #ffc107; color: #2c2c2c; }
+        button { width: 100%; margin-top: 10px; padding: 12px; font-size: 16px; background-color: #ffc107; color: #2c2c2c; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
+        button:hover { background-color: #ffca2c; }
+        #results { margin-top: 20px; background-color: #3c3c3c; padding: 15px; border-radius: 4px; text-align: center; }
+        #results h2 { margin-top: 0; }
+        #results p { margin: 10px 0; font-size: 1.1em; }
+        .total-gain { font-size: 1.3em; font-weight: bold; color: #4caf50; }
+        .credits { text-align: center; margin-top: 30px; font-size: 0.9em; color: #888; }
+    </style>
+</head>
+<body>
+
+    <h1>Calculadora de XP</h1>
+
+    <div class="input-group">
+        <label for="levelInput">Seu Nível:</label>
+        <input type="number" id="levelInput" placeholder="Insira o nível aqui">
+    </div>
+
+    <div class="bonus-group">
+        <input type="checkbox" id="premiumBonus">
+        <label for="premiumBonus">Serviço Premium (+20%)</label>
+    </div>
+
+    <div class="quest-group">
+        <h2>Selecione as Quests:</h2>
+        <div class="quest-list" id="questList">
+        </div>
+    </div>
+
+    <button onclick="calculateXP()">Calcular Ganho de XP</button>
+
+    <div id="results" style="display: none;">
+        <h2>Resultado</h2>
+        <p id="gainText1x"></p>
+        <p id="gainText4x"></p>
+    </div>
+    
+    <div class="credits">
+        Créditos: TiduzinhO
+    </div>
+
+<script>
+    // --- BANCO DE DADOS ATUALIZADO ---
+    const xpTable = { 80: 252517616, 81: 282819731, 82: 316820727, 83: 354769070, 84: 397341358, 85: 445318682, 86: 498122321, 87: 558425000, 88: 558235999, 89: 1042040532, 90: 1250448638, 91: 1500538366, 92: 1800645939, 93: 2160775247, 94: 2592929703, 95: 3111516356, 96: 3733819626, 97: 4480616447, 98: 5376700000, 99: 6452000000, 100: 7742448378, 101: 9290938054, 102: 11149125665, 103: 13378950797, 104: 16055259960, 105: 19265700851, 106: 23118827028, 107: 27742592373, 108: 33291110816, 109: 39950666982, 110: 47940800000, 111: 57527039546, 112: 69032447545, 113: 82838936946, 114: 99406725664, 115: 119288069202, 116: 143145683992, 117: 171775283043, 118: 206129783582, 119: 247355739300, 120: 222620166269, 121: 256015190208, 122: 294415170092, 123: 338577445373, 124: 389364062184, 125: 447768671501, 126: 514265827769, 127: 592175932032, 128: 680999821727, 129: 678730178273, 130: 766965100777, 131: 866670563883, 132: 979337737185, 133: 1106651637206, 134: 1250516356612, 135: 1413083491571, 136: 1596784335757, 137: 1804366299406, 138: 2038933918329, 139: 1949534508063, 140: 2163983293940, 141: 2402021467385, 142: 2666243828803, 143: 2959530650965, 144: 3285079361939, 145: 3646437926179, 146: 4047545912342, 147: 4492775907200, 148: 4986981257200, 149: 5535549195261, 150: 7261634081073, 151: 8205646511183, 152: 9272380557637, 153: 10477790030129, 154: 11839902734046, 155: 13379090089473, 156: 15118371801103, 157: 17083760135247, 158: 19304649152830, 159: 21814253316697, 160: 26546268266934, 161: 32424370526042, 162: 39773894511944, 163: 49021324985971, 164: 60728770835562, 165: 75641057896294, 166: 94750377785885, 167: 119385476009815, 168: 151335303399615, 169: 184629070147534, 170: 266201550230890, 171: 387016100000000, 172: 553432234000000, 173: 780676000000000, 174: 1114136000000000, 175: 1608873000000000, 176: 2351017000000000, 177: 3395786000000000, 178: 4936826000000000, 179: 7223839000000000, 180: 10638745185108000, 181: 14740572522366200, 182: 20098599168426100, 183: 26956633408694600, 184: 35548196313055600, 185: 46979213511871400 };
+
+    const questData = [
+        { level: 80, name: "Máquinas de Combate", xp: 513480000 },
+        { level: 85, name: "Engrenagens do Destino", xp: 757680000 },
+        { level: 90, name: "Entrando Numa Fria", xp: 1082730000 },
+        { level: 95, name: "Combate na Ilha", xp: 3730320000 },
+        { level: 100, name: "Aberrações Mortais", xp: 7818582000 },
+        { level: 105, name: "Guerreiros do Passado", xp: 18117000000 },
+        { level: 108, name: "Guardiões Igolanos", xp: 20164608000 },
+        { level: 110, name: "Combate Congelante", xp: 33766200000 },
+        { level: 118, name: "Máquinas das Trevas", xp: 41496000000 },
+        { level: 123, name: "Protetores da Arma", xp: 69949440000 },
+        { level: 130, name: "O Mundo Sombrio", xp: 84779847000 },
+        { level: 140, name: "Descobrindo as Profundezas", xp: 149527186050 },
+        { level: 150, name: "Confronto sob as Águas", xp: 165966682200 },
+        { level: 155, name: "Ruínas da Cidade Antiga", xp: 173553511312 },
+        { level: 160, name: "Covil do Dragão de Gelo", xp: 184546793062 },
+        { level: 165, name: "O Recomeço da Guerra", xp: 219560137500 },
+        { level: 170, name: "Salve o Reino do Mar", xp: 265962910714 }
+    ];
+
+    // --- LÓGICA DO APP ---
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const questListDiv = document.getElementById('questList');
+        questData.forEach(quest => {
+            const questId = `quest-${quest.level}`;
+            const questItem = document.createElement('div');
+            questItem.className = 'quest-item';
+            
+            questItem.innerHTML = `
+                <input type="checkbox" id="${questId}" data-xp="${quest.xp}">
+                <label for="${questId}">
+                    <span class="quest-level-badge">${quest.level}</span>
+                    <span class="quest-name">${quest.name}</span>
+                </label>
+            `;
+            questListDiv.appendChild(questItem);
+        });
+    });
+
+    function calculateXP() {
+        const level = parseInt(document.getElementById('levelInput').value);
+        if (!level) {
+            alert('Por favor, insira o seu nível.');
+            return;
+        }
+
+        const premiumCheckbox = document.getElementById('premiumBonus');
+        
+        const bonus = premiumCheckbox.checked ? 20 : 0;
+        
+        const xpNeeded = xpTable[level];
+        if (!xpNeeded) {
+            alert('Nível não encontrado na tabela de XP. Por favor, insira um nível válido.');
+            return;
+        }
+
+        let totalXPGained_1x = 0;
+        const selectedQuests = document.querySelectorAll('#questList input[type="checkbox"]:checked');
+
+        if (selectedQuests.length === 0) {
+            alert('Por favor, selecione pelo menos uma quest.');
+            return;
+        }
+
+        selectedQuests.forEach(checkbox => {
+            totalXPGained_1x += parseFloat(checkbox.getAttribute('data-xp'));
+        });
+        
+        const totalXPGained_4x = totalXPGained_1x * 4;
+
+        const bonusMultiplier = 1 + (bonus / 100);
+        const finalXPGain_1x = totalXPGained_1x * bonusMultiplier;
+        const finalXPGain_4x = totalXPGained_4x * bonusMultiplier;
+
+        const percentageGain_1x = (finalXPGain_1x / xpNeeded) * 100;
+        const percentageGain_4x = (finalXPGain_4x / xpNeeded) * 100;
+
+        const resultsDiv = document.getElementById('results');
+        const gainText1x = document.getElementById('gainText1x');
+        const gainText4x = document.getElementById('gainText4x');
+        
+        gainText1x.innerHTML = `Ganho (1 vez): <span class="total-gain">${percentageGain_1x.toFixed(2)}%</span>`;
+        gainText4x.innerHTML = `Ganho Total (4 vezes): <span class="total-gain">${percentageGain_4x.toFixed(2)}%</span>`;
+        resultsDiv.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
